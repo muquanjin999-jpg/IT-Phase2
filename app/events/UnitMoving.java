@@ -21,7 +21,7 @@ public class UnitMoving implements EventProcessor{
 
 	@Override
 	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-		
+		gameState.inputLocked = true;
 		int unitid = message.get("id").asInt();
 		
 	}
