@@ -39,6 +39,14 @@ public class EndTurnClicked implements EventProcessor{
 		// Update stats
 		game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.");
+		
+		// If it's now AI's turn, start AI loop (executed step-by-step in Heartbeat)
+		if (gameState.domainState.getActivePlayerId().equals(game.model.GameState.P2)) {
+			gameState.aiTurnActive = true;
+			gameState.aiActionsThisTurn = 0;
+			gameState.aiCooldownTicks = 1; // give UI one heartbeat to settle
+			game.ui.TemplateCommandDispatcher.showNotification(out, "AI turn...");
+		}
 	}
 
 }

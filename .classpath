@@ -1,8 +1,6 @@
 <classpath>
   <classpathentry kind="src" path="app"/>
   <classpathentry kind="src" path="conf"/>
-  <classpathentry kind="src" path="target\scala-2.13\twirl\main"/>
-  <classpathentry kind="src" path="target\scala-2.13\routes\main"/>
   <classpathentry excluding="resources\" kind="src" path="test"/>
   <classpathentry sourcepath=".\null\Coursier\cache\v1\https\repo1.maven.org\maven2\net\sourceforge\htmlunit\htmlunit-core-js\2.36.0\htmlunit-core-js-2.36.0-sources.jar" kind="lib" path=".\null\Coursier\cache\v1\https\repo1.maven.org\maven2\net\sourceforge\htmlunit\htmlunit-core-js\2.36.0\htmlunit-core-js-2.36.0.jar">
     <attributes>

@@ -128,7 +128,7 @@ public class TileClicked implements EventProcessor{
 		// IMPORTANT: we must not mutate state in highlight. Use validator directly.
 		for (game.model.Unit enemy : board.getUnitsByOwner(game.model.GameState.P2)) {
 			if (enemy.getHp() <= 0) continue;
-			if (enemy.isAvatar() && enemyHasProtector) continue;
+			if ((enemy instanceof game.model.Avatar) && enemyHasProtector) continue;
 			game.system.action.ValidationResult v = new game.system.action.ActionValidator(new game.system.action.ReachabilityService())
 					.validateAttack(gameState.domainState, game.model.GameState.P1, unit.getId(), enemy.getId());
 			if (v.isOk()) {
@@ -154,8 +154,8 @@ public class TileClicked implements EventProcessor{
 		game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 		game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 		if (gameState.domainState.isGameOver()) {
-			String winner = gameState.domainState.getWinnerPlayerId().orElse("?");
-			game.ui.TemplateCommandDispatcher.showNotification(out, "Game Over. Winner: " + winner);
+		    game.ui.TemplateCommandDispatcher.showNotification(out, "Game Over. Winner: (unknown)");
+		
 		}
 	}
 

@@ -1,0 +1,8 @@
+[0m[[0m[31merror[0m] [0m[0mD:\work\IT-Phase2\ITSD-DT2025-26-Template\app\game\ui\TemplateCommandDispatcher.java:52:1: 找不到符号[0m
+[0m[[0m[31merror[0m] [0m[0m  符号:   方法 getAtk()[0m
+[0m[[0m[31merror[0m] [0m[0m  位置: 类型为game.model.Unit的变量 avatar[0m
+[0m[[0m[31merror[0m] [0m[0mavatar.getAtk[0m
+[0m[[0m[31merror[0m] [0m[0mD:\work\IT-Phase2\ITSD-DT2025-26-Template\app\game\ui\TemplateCommandDispatcher.java:99:1: 找不到符号[0m
+[0m[[0m[31merror[0m] [0m[0m  符号:   方法 getAtk()[0m
+[0m[[0m[31merror[0m] [0m[0m  位置: 类型为game.model.Unit的变量 u[0m
+[0m[[0m[31merror[0m] [0m[0mu.getAtk[0m

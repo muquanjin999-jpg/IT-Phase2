@@ -49,7 +49,7 @@ public final class TemplateCommandDispatcher {
         structures.basic.Unit visual = BasicObjectBuilders.loadUnit(avatarConf, avatar.getId().hashCode(), structures.basic.Unit.class);
         BasicCommands.drawUnit(out, visual, tile);
         BasicCommands.setUnitHealth(out, visual, avatar.getHp());
-        BasicCommands.setUnitAttack(out, visual, avatar.getAtk());
+        BasicCommands.setUnitAttack(out, visual, avatar.getAttack());
     }
 
     // ---------------------------------------------------------------------
@@ -96,7 +96,7 @@ public final class TemplateCommandDispatcher {
             structures.basic.Tile tile = BasicObjectBuilders.loadTile(u.getPosition().x(), u.getPosition().y());
             BasicCommands.drawUnit(out, visual, tile);
             BasicCommands.setUnitHealth(out, visual, u.getHp());
-            BasicCommands.setUnitAttack(out, visual, u.getAtk());
+            BasicCommands.setUnitAttack(out, visual, u.getAttack());
         }
     }
 

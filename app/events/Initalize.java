@@ -27,6 +27,12 @@ public class Initalize implements EventProcessor{
 		// Create / reset the domain game manager + domain game state.
 		gameState.domainGameManager = new game.core.GameManager();
 		gameState.domainState = gameState.domainGameManager.initializeNewGame();
+		
+		// Init AI controller + reset AI loop flags
+		gameState.aiController = new game.ai.AIController(gameState.domainGameManager);
+		gameState.aiTurnActive = false;
+		gameState.aiActionsThisTurn = 0;
+		gameState.aiCooldownTicks = 0;
 
 		// Minimal initial rendering: draw the grid + both avatars.
 		TemplateCommandDispatcher.renderInitialBoardAndAvatars(out, gameState.domainState);

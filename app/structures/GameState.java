@@ -56,4 +56,22 @@ public class GameState {
 	 */
 	public game.model.GameState<game.card.Card> domainState = null;
 	
+	// -----------------------------
+	// Phase 2 AI turn-loop state
+	// -----------------------------
+	/** AI controller (runs only when active player is P2). */
+	public game.ai.AIController aiController = null;
+
+	/** True when we are currently executing the AI turn via heartbeat stepping. */
+	public boolean aiTurnActive = false;
+
+	/** AI per-turn action cap to prevent loops (recommend 8). */
+	public int aiActionsThisTurn = 0;
+
+	/**
+	 * Simple cooldown ticks so UI has time to render between non-move actions
+	 * (since template doesn't provide AnimationEnded(tag) for attack/spell).
+	 */
+	public int aiCooldownTicks = 0;
+	
 }
