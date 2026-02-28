@@ -6,17 +6,15 @@ import akka.actor.ActorRef;
 import structures.GameState;
 
 /**
- * Indicates that the user has clicked an object on the game canvas, in this case
- * the end-turn button.
- * 
- * { 
+ * Indicates that the user has clicked the end-turn button.
+ *
+ * {
  *   messageType = “endTurnClicked”
  * }
- * 
- * @author Dr. Richard McCreadie
  *
+ * @author Dr. Richard McCreadie
  */
-public class EndTurnClicked implements EventProcessor{
+public class EndTurnClicked implements EventProcessor {
 
 	@Override
 	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
@@ -36,16 +34,20 @@ public class EndTurnClicked implements EventProcessor{
 		game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
 		gameState.highlightedTargets.clear();
 
-		// Update stats
+		// Update stats + Step2: refresh P1 hand after end turn (UI consistency)
 		game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
-		game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.");
-		
-		// If it's now AI's turn, start AI loop (executed step-by-step in Heartbeat)
+		game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
+
+		// Step1: start AI turn-loop if it is now P2's turn
 		if (gameState.domainState.getActivePlayerId().equals(game.model.GameState.P2)) {
 			gameState.aiTurnActive = true;
 			gameState.aiActionsThisTurn = 0;
-			gameState.aiCooldownTicks = 1; // give UI one heartbeat to settle
+
+			// lock and let Heartbeat drive the AI steps
+			gameState.inputLocked = false; // Heartbeat will lock per animation tags
 			game.ui.TemplateCommandDispatcher.showNotification(out, "AI turn...");
+		} else {
+			game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.");
 		}
 	}
 

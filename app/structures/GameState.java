@@ -3,15 +3,13 @@ package structures;
 /**
  * This class can be used to hold information about the on-going game.
  * Its created with the GameActor.
- * 
- * @author Dr. Richard McCreadie
  *
+ * @author Dr. Richard McCreadie
  */
 public class GameState {
 
-	
 	public boolean gameInitalised = false;
-	
+
 	public boolean something = false;
 
 	// -----------------------------
@@ -20,8 +18,8 @@ public class GameState {
 	/**
 	 * When true, ignore gameplay input (used as a lightweight async gate).
 	 *
-	 * The provided template does not include explicit AnimationEnded(tag) events.
-	 * We therefore lock input for move animations using unitMoving/unitStopped.
+	 * We lock input during animations/actions and unlock via AnimationEnded(tag)
+	 * (or UnitStopped for movement).
 	 */
 	public boolean inputLocked = false;
 
@@ -46,8 +44,7 @@ public class GameState {
 
 	/**
 	 * Domain-layer game manager (your Phase 2 backend). Stored here so all EventProcessor
-	 * classes (Initalize/TileClicked/CardClicked/EndTurnClicked/UnitMoving/UnitStopped)
-	 * can access the same match instance.
+	 * classes can access the same match instance.
 	 */
 	public game.core.GameManager domainGameManager = null;
 
@@ -55,23 +52,23 @@ public class GameState {
 	 * Domain-layer match state created by {@link game.core.GameManager#initializeNewGame()}.
 	 */
 	public game.model.GameState<game.card.Card> domainState = null;
-	
+
 	// -----------------------------
-	// Phase 2 AI turn-loop state
+	// Phase 2 AI loop state (Step1)
 	// -----------------------------
-	/** AI controller (runs only when active player is P2). */
 	public game.ai.AIController aiController = null;
-
-	/** True when we are currently executing the AI turn via heartbeat stepping. */
 	public boolean aiTurnActive = false;
-
-	/** AI per-turn action cap to prevent loops (recommend 8). */
 	public int aiActionsThisTurn = 0;
 
+	// -----------------------------
+	// Animation gating (Step1+gating)
+	// -----------------------------
+	public game.ui.AnimationGate animationGate = new game.ui.AnimationGate();
+
 	/**
-	 * Simple cooldown ticks so UI has time to render between non-move actions
-	 * (since template doesn't provide AnimationEnded(tag) for attack/spell).
+	 * Fallback cooldown ticks (only used if UI does not send AnimationEnded(tag)).
+	 * If you DO implement proper UI ack, you can keep this at 0 always.
 	 */
-	public int aiCooldownTicks = 0;
-	
+	public int aiFallbackCooldownTicks = 0;
+
 }

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
+import events.AnimationEnded;
 import events.CardClicked;
 import events.EndTurnClicked;
 import events.EventProcessor;
@@ -25,33 +26,22 @@ import utils.ImageListForPreLoad;
 import play.libs.Json;
 
 /**
- * The game actor is an Akka Actor that receives events from the user front-end UI (e.g. when 
- * the user clicks on the board) via a websocket connection. When an event arrives, the 
- * processMessage() method is called, which can be used to react to the event. The Game actor 
- * also includes an ActorRef object which can be used to issue commands to the UI to change 
- * what the user sees. The GameActor is created when the user browser creates a websocket
- * connection to back-end services (on load of the game web page).
- * @author Dr. Richard McCreadie
+ * The game actor is an Akka Actor that receives events from the user front-end UI.
  *
+ * @author Dr. Richard McCreadie
  */
 public class GameActor extends AbstractActor {
 
-	private ObjectMapper mapper = new ObjectMapper(); // Jackson Java Object Serializer, is used to turn java objects to Strings
-	private ActorRef out; // The ActorRef can be used to send messages to the front-end UI
-	private Map<String,EventProcessor> eventProcessors; // Classes used to process each type of event
-	private GameState gameState; // A class that can be used to hold game state information
+	private ObjectMapper mapper = new ObjectMapper();
+	private ActorRef out;
+	private Map<String,EventProcessor> eventProcessors;
+	private GameState gameState;
 
-	/**
-	 * Constructor for the GameActor. This is called by the GameController when the websocket
-	 * connection to the front-end is established.
-	 * @param out
-	 */
 	@SuppressWarnings("deprecation")
 	public GameActor(ActorRef out) {
 
-		this.out = out; // save this, so we can send commands to the front-end later
+		this.out = out;
 
-		// create class instances to respond to the various events that we might recieve
 		eventProcessors = new HashMap<String,EventProcessor>();
 		eventProcessors.put("initalize", new Initalize());
 		eventProcessors.put("heartbeat", new Heartbeat());
@@ -61,13 +51,14 @@ public class GameActor extends AbstractActor {
 		eventProcessors.put("cardclicked", new CardClicked());
 		eventProcessors.put("endturnclicked", new EndTurnClicked());
 		eventProcessors.put("otherclicked", new OtherClicked());
-		
-		// Initalize a new game state object
+
+		// NEW: UI ack for animation/action completion
+		eventProcessors.put("animationended", new AnimationEnded());
+
 		gameState = new GameState();
-		
-		// Get the list of image files to pre-load the UI with
+
 		Set<String> images = ImageListForPreLoad.getImageListForPreLoad();
-		
+
 		try {
 			ObjectNode readyMessage = Json.newObject();
 			readyMessage.put("messagetype", "actorReady");
@@ -78,11 +69,6 @@ public class GameActor extends AbstractActor {
 		}
 	}
 
-	/**
-	 * This method simply farms out the processing of the json messages from the front-end to the
-	 * processMessage method
-	 * @return
-	 */
 	public Receive createReceive() {
 		return receiveBuilder()
 				.match(JsonNode.class, message -> {
@@ -91,27 +77,17 @@ public class GameActor extends AbstractActor {
 				}).build();
 	}
 
-	/**
-	 * This looks up an event processor for the specified message type.
-	 * Note that this processing is asynchronous.
-	 * @param messageType
-	 * @param message
-	 * @return
-	 * @throws Exception
-	 */
 	@SuppressWarnings({"deprecation"})
 	public void processMessage(String messageType, JsonNode message) throws Exception{
 
 		EventProcessor processor = eventProcessors.get(messageType);
 		if (processor==null) {
-			// Unknown event type received
 			System.err.println("GameActor: Recieved unknown event type "+messageType);
 		} else {
-			processor.processEvent(out, gameState, message); // process the event
+			processor.processEvent(out, gameState, message);
 		}
 	}
-	
-	
+
 	public void reportError(String errorText) {
 		ObjectNode returnMessage = Json.newObject();
 		returnMessage.put("messagetype", "ERR");
