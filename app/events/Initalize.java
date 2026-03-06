@@ -32,7 +32,11 @@ public class Initalize implements EventProcessor {
 		gameState.visualUnits.clear();
 		gameState.visualHand.clear();
 		gameState.animationGate = new game.ui.AnimationGate();
-
+		gameState.pendingUnitHp.clear();
+		gameState.pendingUnitAtk.clear();
+		gameState.uiInitialUnitsDrawn = false;
+        gameState.initialRenderPendingUnlock = false;
+		
 		// Create / reset the domain game manager + domain game state.
 		gameState.domainGameManager = new game.core.GameManager();
 		gameState.domainState = gameState.domainGameManager.initializeNewGame();
@@ -44,13 +48,19 @@ public class Initalize implements EventProcessor {
 		gameState.aiFallbackCooldownTicks = 0;
 
 		// Initial rendering: grid + avatars + units + stats + hand
-		TemplateCommandDispatcher.renderInitialBoardAndAvatars(out, gameState.domainState);
+		TemplateCommandDispatcher.renderInitialBoardAndAvatars(out, gameState, gameState.domainState);
 		TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 		TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 
 		// Step2: render P1 hand (positions 1..6)
 		TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
 
+        // Lock input during initial render and release it on the first heartbeat
+        gameState.inputLocked = true;
+        gameState.initialRenderPendingUnlock = true;
+        if (gameState.animationGate != null) {
+            gameState.animationGate.lock("initial_render");
+        }
 		TemplateCommandDispatcher.showNotification(out, "Game started. Your turn.");
 	}
 

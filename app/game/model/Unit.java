@@ -108,7 +108,7 @@ public class Unit {
     public void refreshForOwnerTurn() {
         this.counterUsed = false;
         this.hasMoved = false;
-        this.newlySummonedThisTurn = false; // no longer "newly summoned" once owner's next turn starts
+        this.newlySummonedThisTurn = false;
 
         if (frozenTurns > 0) {
             frozenTurns -= 1;
@@ -119,6 +119,20 @@ public class Unit {
 
         moveRemaining = 1;
         attackRemaining = hasKeyword(UnitKeyword.ATTACK_TWICE) ? 2 : 1;
+    }
+        
+    public boolean canMove() {
+        return !isDead() && moveRemaining > 0 && frozenTurns <= 0;
+    }
+
+    public boolean canAttack() {
+        return !isDead() && attackRemaining > 0 && frozenTurns <= 0;
+    }
+
+    public void increaseMaxHpAndHeal(int amount) {
+        int inc = Math.max(0, amount);
+        this.maxHp += inc;
+        this.hp = Math.min(this.maxHp, this.hp + inc);
     }
 
     @Override

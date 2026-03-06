@@ -20,6 +20,16 @@ public class AnimationGate {
 		if (tag == null) return;
 		locks.remove(tag);
 	}
+	
+    /**
+     * Emergency escape hatch: clears all locks.
+     *
+     * Used when the UI fails to send AnimationEnded(tag) and the server would
+     * otherwise remain permanently input-locked.
+     */
+    public void unlockAll() {
+        locks.clear();
+    }
 
 	public boolean isLocked() {
 		return !locks.isEmpty();

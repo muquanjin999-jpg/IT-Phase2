@@ -13,6 +13,9 @@ public final class TilePos {
 
     public int x() { return x; }
     public int y() { return y; }
+    
+    public int getX() { return x; }
+    public int getY() { return y; }
 
     public int manhattanDistance(TilePos other) {
         return Math.abs(this.x - other.x) + Math.abs(this.y - other.y);

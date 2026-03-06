@@ -1,34 +1,36 @@
 package events;
 
 import com.fasterxml.jackson.databind.JsonNode;
-
 import akka.actor.ActorRef;
 import structures.GameState;
 
-/**
- * Animation ended acknowledgement from UI.
- *
- * Expected JSON:
- * {
- *   "messagetype": "animationended",
- *   "tag": "AI_MOVE"   // or any tag you locked with AnimationGate.lock(tag)
- * }
- */
 public class AnimationEnded implements EventProcessor {
 
-	@Override
-	public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
-		if (gameState == null) return;
-		if (gameState.animationGate == null) return;
-		if (message == null || message.get("tag") == null) return;
+    @Override
+    public void processEvent(ActorRef out, GameState gameState, JsonNode message) {
 
-		String tag = message.get("tag").asText();
-		gameState.animationGate.unlock(tag);
+        if (gameState == null) return;
+        if (!gameState.gameInitalised || gameState.domainState == null) return;
 
-		// When all locks cleared, allow next actions
-		if (!gameState.animationGate.isLocked()) {
-			gameState.inputLocked = false;
-		}
-	}
+        // --- HARD UNLOCK ---
+        // We do not trust tag matching; any animationEnded releases the lock.
+        if (gameState.animationGate != null) {
+            gameState.animationGate.unlockAll();
+        }
 
+        gameState.inputLocked = false;
+        gameState.animationLockTicks = 0;
+        gameState.aiFallbackCooldownTicks = 0;
+
+        // Reset selections
+        game.ui.TemplateCommandDispatcher.clearTileHighlights(out, gameState);
+        gameState.highlightedTargets.clear();
+        gameState.selectedUnitId = null;
+        gameState.selectedHandPos = null;
+
+        // Sync UI with domain state
+        game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
+        game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+        game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
+    }
 }

@@ -1,6 +1,6 @@
 // @GENERATOR:play-routes-compiler
 // @SOURCE:D:/work/IT-Phase2/ITSD-DT2025-26-Template/conf/routes
-// @DATE:Sat Feb 28 20:58:30 GMT 2026
+// @DATE:Fri Mar 06 14:33:07 GMT 2026
 
 package router
 

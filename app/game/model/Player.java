@@ -13,6 +13,8 @@ public class Player<T> {
     private int mana;
     private int maxMana;
 
+    private int hornOfTheForsakenRobustness = 0;
+    
     public Player(String id, String displayName, Avatar avatar, Deck<T> deck, Hand<T> hand, DiscardPile<T> discardPile) {
         this.id = Objects.requireNonNull(id);
         this.displayName = Objects.requireNonNull(displayName);
@@ -45,6 +47,14 @@ public class Player<T> {
         if (cost < 0) throw new IllegalArgumentException("cost < 0");
         if (mana < cost) throw new IllegalStateException("Insufficient mana");
         mana -= cost;
+    }
+    
+    public void equipHornOfTheForsaken(int robustness) {
+        this.hornOfTheForsakenRobustness = Math.max(0, robustness);
+    }
+
+    public int getHornOfTheForsakenRobustness() {
+        return hornOfTheForsakenRobustness;
     }
 
     @Override

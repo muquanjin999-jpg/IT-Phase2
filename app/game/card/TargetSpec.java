@@ -37,18 +37,26 @@ public final class TargetSpec {
     public boolean isAllowTile() { return allowTile; }
     public boolean isRequiresEmptyTile() { return requiresEmptyTile; }
     public int getRange() { return range; }
-    public boolean isTeleportLike() { return teleportLike; }
+    public boolean teleportLike() { return teleportLike; }
 
-    public static TargetSpec enemyUnitOrAvatarInRange(int range) {
-        return new TargetSpec(false, true, true, true, false, false, range, false);
+    public static TargetSpec none() {
+        return new TargetSpec(false, false, false, false, false, false, -1, false);
     }
 
-    public static TargetSpec enemyUnitOnlyInRange(int range) {
-        return new TargetSpec(false, true, true, false, false, false, range, false);
+    public static TargetSpec friendlyUnitAny() {
+        return new TargetSpec(true, false, true, true, false, false, -1, false);
     }
 
-    public static TargetSpec friendlyUnitOrAvatarInRange(int range) {
-        return new TargetSpec(true, false, true, true, false, false, range, false);
+    public static TargetSpec friendlyUnitNonAvatar() {
+        return new TargetSpec(true, false, true, false, false, false, -1, false);
+    }
+
+    public static TargetSpec enemyUnitAny() {
+        return new TargetSpec(false, true, true, true, false, false, -1, false);
+    }
+
+    public static TargetSpec enemyUnitNonAvatar() {
+        return new TargetSpec(false, true, true, false, false, false, -1, false);
     }
 
     public static TargetSpec emptyTileGlobal() {
@@ -56,7 +64,30 @@ public final class TargetSpec {
     }
 
     public static TargetSpec portalStepTarget() {
-        // needs source unit + destination tile
         return new TargetSpec(true, false, true, false, true, true, -1, true);
+    }
+
+    public boolean unitOnly() {
+        return allowUnit && !allowTile && !teleportLike;
+    }
+
+    public boolean isEmptyTileGlobal() {
+        return allowTile && requiresEmptyTile && range == -1 && !teleportLike;
+    }
+
+    public boolean friendlyOnly() {
+        return allowFriendly && !allowEnemy;
+    }
+
+    public boolean enemyOnly() {
+        return allowEnemy && !allowFriendly;
+    }
+
+    public boolean canTargetAvatar() {
+        return allowAvatar;
+    }
+
+    public boolean isNoTarget() {
+        return !allowUnit && !allowTile && !teleportLike;
     }
 }

@@ -3,8 +3,6 @@ package game.system.action;
 import game.card.*;
 import game.model.*;
 
-import java.util.List;
-
 public class ActionValidator {
     private final ReachabilityService reachabilityService;
 
@@ -12,6 +10,11 @@ public class ActionValidator {
         this.reachabilityService = reachabilityService;
     }
 
+    public java.util.List<TilePos> getReachableTiles(Board board, Unit unit) {
+        if (board == null || unit == null) return java.util.List.of();
+        return reachabilityService.reachableTiles(board, unit);
+    }
+    
     public ValidationResult validateMove(GameState<Card> state, String actorPlayerId, String unitId, TilePos destination) {
         if (state == null) return ValidationResult.fail("state is null");
         if (state.isGameOver()) return ValidationResult.fail("game is over");
@@ -25,7 +28,10 @@ public class ActionValidator {
         if (!state.getBoard().isEmpty(destination)) return ValidationResult.fail("destination occupied");
         if (unit.getMoveRemaining() <= 0) return ValidationResult.fail("unit has no move action remaining");
         if (unit.getFrozenTurns() > 0) return ValidationResult.fail("unit is frozen");
-        if (unit.getMoveRange() <= 0) return ValidationResult.fail("unit cannot move");
+
+        if (isProvoked(state, actorPlayerId, unit.getPosition())) {
+            return ValidationResult.fail("unit is provoked and cannot move");
+        }
 
         if (!reachabilityService.isReachable(state.getBoard(), unit, destination)) {
             return ValidationResult.fail("destination not reachable under path rules");
@@ -55,7 +61,10 @@ public class ActionValidator {
             return ValidationResult.fail("defender out of attack range");
         }
 
-        // Protector rule: enemy avatar cannot be attacked if enemy protector unit exists.
+        if (isProvoked(state, actorPlayerId, attacker.getPosition()) && !defender.hasKeyword(UnitKeyword.PROVOKE)) {
+            return ValidationResult.fail("provoked: must attack a Provoke unit");
+        }
+
         if (defender instanceof Avatar && enemyHasProtector(state, actorPlayerId)) {
             return ValidationResult.fail("enemy avatar is protected by Protector unit");
         }
@@ -74,90 +83,87 @@ public class ActionValidator {
         boolean adjacentFriendly = false;
         for (TilePos adj : board.getAdjacentOrthogonal(tile)) {
             Unit u = board.getUnitAt(adj).orElse(null);
-            if (u != null && ownerId.equals(u.getOwnerId())) {
+            if (u != null && u.getOwnerId().equals(ownerId)) {
                 adjacentFriendly = true;
                 break;
             }
         }
-        if (!adjacentFriendly) {
-            return ValidationResult.fail("summon tile must be orthogonally adjacent to friendly avatar/unit");
-        }
+        if (!adjacentFriendly) return ValidationResult.fail("summon must be adjacent to friendly unit");
 
+        if (!state.getPlayer(ownerId).canPay(card.getCost())) return ValidationResult.fail("not enough mana");
         return ValidationResult.ok();
     }
 
     public ValidationResult validateSpellTarget(GameState<Card> state, String ownerId, SpellCard card, CardTarget target) {
         if (state == null) return ValidationResult.fail("state is null");
-        if (card == null) return ValidationResult.fail("spell card is null");
+        if (card == null) return ValidationResult.fail("card is null");
         if (target == null) return ValidationResult.fail("target is null");
 
+        if (!state.getPlayer(ownerId).canPay(card.getCost())) return ValidationResult.fail("not enough mana");
+
         TargetSpec spec = card.getTargetSpec();
-        Board board = state.getBoard();
 
-        if (spec.isTeleportLike()) {
-            if (target.getUnitId() == null || target.getTile() == null) {
-                return ValidationResult.fail("Portal Step requires source unit and destination tile");
-            }
-            Unit source = board.getUnitById(target.getUnitId()).orElse(null);
-            if (source == null) return ValidationResult.fail("source unit not found");
-            if (!ownerId.equals(source.getOwnerId())) return ValidationResult.fail("Portal Step requires friendly unit");
-            if (source instanceof Avatar) return ValidationResult.fail("Portal Step cannot target avatar");
-            if (!board.isInside(target.getTile())) return ValidationResult.fail("destination outside board");
-            if (!board.isEmpty(target.getTile())) return ValidationResult.fail("destination occupied");
-            // destination follows summon adjacency rule
-            return validateSummonAdjacencyOnly(state, ownerId, target.getTile());
-        }
-
-        if (spec.isAllowTile()) {
-            if (target.getTile() == null) return ValidationResult.fail("tile target required");
-            if (!board.isInside(target.getTile())) return ValidationResult.fail("tile target outside board");
-            if (spec.isRequiresEmptyTile() && !board.isEmpty(target.getTile())) {
-                return ValidationResult.fail("tile target must be empty");
-            }
+        if (spec.isNoTarget()) {
             return ValidationResult.ok();
         }
 
-        if (target.getUnitId() == null) return ValidationResult.fail("unit target required");
-        Unit unit = board.getUnitById(target.getUnitId()).orElse(null);
-        if (unit == null) return ValidationResult.fail("target unit not found");
+        if (spec.teleportLike()) {
+            if (target.getUnitId() == null || target.getTile() == null) return ValidationResult.fail("requires unit+tile target");
+            Unit unit = state.getBoard().getUnitById(target.getUnitId()).orElse(null);
+            if (unit == null) return ValidationResult.fail("unit not found");
+            if (!unit.getOwnerId().equals(ownerId)) return ValidationResult.fail("must target friendly unit");
+            if (unit instanceof Avatar) return ValidationResult.fail("cannot target avatar");
+            if (!state.getBoard().isInside(target.getTile())) return ValidationResult.fail("tile outside board");
+            if (!state.getBoard().isEmpty(target.getTile())) return ValidationResult.fail("tile occupied");
 
-        boolean friendly = ownerId.equals(unit.getOwnerId());
-        if (friendly && !spec.isAllowFriendly()) return ValidationResult.fail("friendly target not allowed");
-        if (!friendly && !spec.isAllowEnemy()) return ValidationResult.fail("enemy target not allowed");
-        if (unit instanceof Avatar && !spec.isAllowAvatar()) return ValidationResult.fail("avatar target not allowed");
-        if (!(unit instanceof Avatar) && !spec.isAllowUnit()) return ValidationResult.fail("unit target not allowed");
-
-        if (spec.getRange() >= 0) {
-            Avatar casterAvatar = state.getPlayer(ownerId).getAvatar();
-            int dist = board.manhattanDistance(casterAvatar.getPosition(), unit.getPosition());
-            if (dist > spec.getRange()) return ValidationResult.fail("spell target out of range");
+            boolean adjacentFriendly = false;
+            for (TilePos adj : state.getBoard().getAdjacentOrthogonal(target.getTile())) {
+                Unit u = state.getBoard().getUnitAt(adj).orElse(null);
+                if (u != null && u.getOwnerId().equals(ownerId)) { adjacentFriendly = true; break; }
+            }
+            if (!adjacentFriendly) return ValidationResult.fail("destination must be adjacent to friendly unit");
+            return ValidationResult.ok();
         }
 
-        return ValidationResult.ok();
+        if (spec.unitOnly()) {
+            if (target.getUnitId() == null) return ValidationResult.fail("requires unit target");
+            Unit unit = state.getBoard().getUnitById(target.getUnitId()).orElse(null);
+            if (unit == null) return ValidationResult.fail("unit not found");
+
+            if (spec.friendlyOnly() && !unit.getOwnerId().equals(ownerId)) return ValidationResult.fail("must target friendly unit");
+            if (spec.enemyOnly() && unit.getOwnerId().equals(ownerId)) return ValidationResult.fail("must target enemy unit");
+            if (!spec.canTargetAvatar() && unit instanceof Avatar) return ValidationResult.fail("cannot target avatar");
+
+            return ValidationResult.ok();
+        }
+
+        if (spec.isEmptyTileGlobal()) {
+            if (target.getTile() == null) return ValidationResult.fail("requires tile target");
+            if (!state.getBoard().isInside(target.getTile())) return ValidationResult.fail("tile outside board");
+            if (!state.getBoard().isEmpty(target.getTile())) return ValidationResult.fail("tile occupied");
+            return ValidationResult.ok();
+        }
+
+        return ValidationResult.fail("unsupported target spec");
     }
 
-    public List<TilePos> getReachableTiles(Board board, Unit unit) {
-        return reachabilityService.reachableTiles(board, unit);
-    }
-
-    public boolean enemyHasProtector(GameState<Card> state, String attackerPlayerId) {
-        String enemyId = state.getOpponent(attackerPlayerId).getId();
-        for (Unit unit : state.getBoard().getUnitsByOwner(enemyId)) {
-            if (!(unit instanceof Avatar) && !unit.isDead() && unit.hasKeyword(UnitKeyword.PROTECTOR)) {
+    private boolean enemyHasProtector(GameState<Card> state, String actorPlayerId) {
+        for (Unit u : state.getBoard().getAllUnits()) {
+            if (!u.getOwnerId().equals(actorPlayerId) && u.hasKeyword(UnitKeyword.PROTECTOR) && !(u instanceof Avatar) && !u.isDead()) {
                 return true;
             }
         }
         return false;
     }
 
-    private ValidationResult validateSummonAdjacencyOnly(GameState<Card> state, String ownerId, TilePos tile) {
-        Board board = state.getBoard();
-        if (!board.isInside(tile)) return ValidationResult.fail("tile outside board");
-        if (!board.isEmpty(tile)) return ValidationResult.fail("tile occupied");
-        for (TilePos adj : board.getAdjacentOrthogonal(tile)) {
-            Unit u = board.getUnitAt(adj).orElse(null);
-            if (u != null && ownerId.equals(u.getOwnerId())) return ValidationResult.ok();
+    private boolean isProvoked(GameState<Card> state, String actorPlayerId, TilePos pos) {
+        String enemyId = state.getOpponent(actorPlayerId).getId();
+        for (TilePos adj : state.getBoard().getAdjacentOrthogonal(pos)) {
+            Unit u = state.getBoard().getUnitAt(adj).orElse(null);
+            if (u != null && u.getOwnerId().equals(enemyId) && u.hasKeyword(UnitKeyword.PROVOKE) && !u.isDead()) {
+                return true;
+            }
         }
-        return ValidationResult.fail("destination must be adjacent to friendly avatar/unit");
+        return false;
     }
 }

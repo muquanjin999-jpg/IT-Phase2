@@ -43,7 +43,10 @@ public class GameActor extends AbstractActor {
 		this.out = out;
 
 		eventProcessors = new HashMap<String,EventProcessor>();
+
+		eventProcessors.put("initialize", new Initalize());
 		eventProcessors.put("initalize", new Initalize());
+
 		eventProcessors.put("heartbeat", new Heartbeat());
 		eventProcessors.put("unitMoving", new UnitMoving());
 		eventProcessors.put("unitstopped", new UnitStopped());
@@ -54,6 +57,9 @@ public class GameActor extends AbstractActor {
 
 		// NEW: UI ack for animation/action completion
 		eventProcessors.put("animationended", new AnimationEnded());
+		// be tolerant to alternative casing used by the UI
+		eventProcessors.put("animationEnded", new AnimationEnded());
+		eventProcessors.put("AnimationEnded", new AnimationEnded());
 
 		gameState = new GameState();
 

@@ -3,6 +3,7 @@ package game.system.action;
 import game.model.Board;
 import game.model.TilePos;
 import game.model.Unit;
+import game.model.UnitKeyword;
 
 import java.util.*;
 
@@ -12,7 +13,18 @@ public class ReachabilityService {
         if (board == null || unit == null) return Collections.emptyList();
         if (unit.getMoveRemaining() <= 0) return Collections.emptyList();
         if (unit.getFrozenTurns() > 0) return Collections.emptyList();
-        if (unit.getMoveRange() <= 0) return Collections.emptyList();
+        if (unit.getMoveRange() <= 0 && !unit.hasKeyword(UnitKeyword.FLYING)) return Collections.emptyList();
+
+        if (unit.hasKeyword(UnitKeyword.FLYING)) {
+            List<TilePos> out = new ArrayList<>();
+            for (int x = 0; x < board.getWidth(); x++) {
+                for (int y = 0; y < board.getHeight(); y++) {
+                    TilePos p = new TilePos(x, y);
+                    if (board.isEmpty(p)) out.add(p);
+                }
+            }
+            return out;
+        }
 
         TilePos start = unit.getPosition();
         if (start == null) return Collections.emptyList();
@@ -30,7 +42,7 @@ public class ReachabilityService {
             for (TilePos nxt : board.getAdjacentOrthogonal(cur)) {
                 if (dist.containsKey(nxt)) continue;
                 boolean isStart = nxt.equals(start);
-                if (!isStart && !board.isEmpty(nxt)) continue; // no passing through occupied tiles
+                if (!isStart && !board.isEmpty(nxt)) continue;
                 dist.put(nxt, d + 1);
                 q.add(nxt);
             }
@@ -40,9 +52,7 @@ public class ReachabilityService {
         for (Map.Entry<TilePos, Integer> e : dist.entrySet()) {
             TilePos p = e.getKey();
             if (p.equals(start)) continue;
-            if (e.getValue() <= unit.getMoveRange() && board.isEmpty(p)) {
-                result.add(p);
-            }
+            if (e.getValue() <= unit.getMoveRange() && board.isEmpty(p)) result.add(p);
         }
         result.sort(Comparator.comparingInt(TilePos::x).thenComparingInt(TilePos::y));
         return result;

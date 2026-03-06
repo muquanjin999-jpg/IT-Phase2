@@ -27,7 +27,11 @@ public class EndTurnClicked implements EventProcessor {
 			game.ui.TemplateCommandDispatcher.showNotification(out, vr.getMessage());
 			return;
 		}
-
+		
+		// No explicit end_turn animation in the template UI -> do not lock the gate.
+		gameState.inputLocked = false;
+		gameState.aiFallbackCooldownTicks = 1;
+		
 		// Clear any selections/highlights
 		gameState.selectedUnitId = null;
 		gameState.selectedHandPos = null;
@@ -44,7 +48,7 @@ public class EndTurnClicked implements EventProcessor {
 			gameState.aiActionsThisTurn = 0;
 
 			// lock and let Heartbeat drive the AI steps
-			gameState.inputLocked = false; // Heartbeat will lock per animation tags
+
 			game.ui.TemplateCommandDispatcher.showNotification(out, "AI turn...");
 		} else {
 			game.ui.TemplateCommandDispatcher.showNotification(out, "Turn ended.");

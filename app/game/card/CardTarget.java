@@ -11,6 +11,10 @@ public final class CardTarget {
         this.tile = tile;
     }
 
+    public static CardTarget none() {
+        return new CardTarget(null, null);
+    }
+
     public static CardTarget unit(String unitId) {
         return new CardTarget(unitId, null);
     }

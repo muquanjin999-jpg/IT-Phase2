@@ -83,6 +83,10 @@ public class GameManager {
         ensureInitialized();
         return state;
     }
+    
+    public ActionValidator getActionValidator() {
+        return actionValidator;
+    }
 
     public ValidationResult moveUnit(String actorPlayerId, String unitId, TilePos destination) {
         ensureInitialized();

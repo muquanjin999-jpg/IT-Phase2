@@ -24,10 +24,62 @@ public class Heartbeat implements EventProcessor {
 		if (gameState.domainGameManager == null || gameState.domainState == null) return;
 		if (gameState.aiController == null) return;
 		if (gameState.domainState.isGameOver()) return;
+		
+        // ==========================================================
+        // Initial render release: wait one heartbeat so UI can create
+        // unit sprites / labels before allowing interaction
+        // ==========================================================
+        if (gameState.initialRenderPendingUnlock) {
+            game.ui.TemplateCommandDispatcher.flushPendingUnitStats(out, gameState);
+            game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+            game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
 
-		// If any animation locks are active, wait for AnimationEnded(tag)
-		if (gameState.animationGate != null && gameState.animationGate.isLocked()) {
+            gameState.initialRenderPendingUnlock = false;
+            gameState.inputLocked = false;
+            gameState.animationLockTicks = 0;
+
+            if (gameState.animationGate != null) {
+                gameState.animationGate.unlock("initial_render");
+            }
+            return;
+        }
+
+		// ==========================================================
+		// Fallback unlock for inputLocked (covers "orphan inputLocked")
+		// ==========================================================
+		if (gameState.inputLocked) {
+
+			boolean gateLocked = (gameState.animationGate != null && gameState.animationGate.isLocked());
+
+			// If inputLocked is true but the gate is NOT locked, we are stuck incorrectly.
+			// Recover immediately.
+			if (!gateLocked) {
+				gameState.inputLocked = false;
+				gameState.aiFallbackCooldownTicks = 0;
+				gameState.animationLockTicks = 0;
+
+				game.ui.TemplateCommandDispatcher.flushPendingUnitStats(out, gameState);
+				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
+				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+				return;
+			}
+
+			// Gate is locked -> wait; if UI never sends AnimationEnded, force-unlock on timeout.
+			gameState.animationLockTicks++;
+			if (gameState.animationLockTicks >= GameState.ANIMATION_LOCK_TIMEOUT_TICKS) {
+				if (gameState.animationGate != null) gameState.animationGate.unlockAll();
+				gameState.inputLocked = false;
+				gameState.aiFallbackCooldownTicks = 0;
+				gameState.animationLockTicks = 0;
+
+				game.ui.TemplateCommandDispatcher.flushPendingUnitStats(out, gameState);
+				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
+				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+			}
 			return;
+		} else {
+			// Not locked -> reset lock tick counter
+			gameState.animationLockTicks = 0;
 		}
 
 		// Fallback cooldown (only if UI never sends AnimationEnded)
@@ -35,6 +87,9 @@ public class Heartbeat implements EventProcessor {
 			gameState.aiFallbackCooldownTicks--;
 			return;
 		}
+
+		// Flush any delayed unit stats once animations are not locked
+		game.ui.TemplateCommandDispatcher.flushPendingUnitStats(out, gameState);
 
 		// Only run when AI loop is enabled AND it is P2's turn
 		if (!gameState.aiTurnActive) return;
@@ -71,30 +126,45 @@ public class Heartbeat implements EventProcessor {
 
 			case MOVE:
 				gameState.aiActionsThisTurn++;
-				// Lock on a movement tag; UnitStopped can also unlock, but we support AnimationEnded too
-				if (gameState.animationGate != null) gameState.animationGate.lock("AI_MOVE");
+				gameState.inputLocked = true;
+
+				if (gameState.animationGate != null) gameState.animationGate.lock(game.ui.AnimationTags.MOVE);
 
 				game.model.Unit moved = gameState.domainState.getBoard().getUnitById(r.unitId).orElse(null);
 				if (moved != null) {
 					game.ui.TemplateCommandDispatcher.moveUnit(out, gameState, moved);
 				}
 
-				// If UI never sends AnimationEnded(tag), fallback unlock after 1 tick
+				// If UI never sends AnimationEnded(tag), allow timeout/soft recovery to kick in
 				gameState.aiFallbackCooldownTicks = 1;
 				break;
 
 			case ATTACK:
+				gameState.aiActionsThisTurn++;
+
+				// No reliable UI ack for ATTACK, so do not lock the input/gate here.
+				gameState.inputLocked = false;
+				gameState.animationLockTicks = 0;
+
+				// Minimal: re-render after domain attack has happened inside AIController.step()
+				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
+				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
+
+				// Small pacing gap so AI actions do not happen in the same heartbeat burst
+				gameState.aiFallbackCooldownTicks = 1;
+				break;
+
 			case PLAY_CARD:
 				gameState.aiActionsThisTurn++;
-				// Lock on action tag; AnimationEnded(tag) should unlock
-				if (gameState.animationGate != null) gameState.animationGate.lock("AI_ACTION");
 
-				// Refresh board/stats/hand
+				// No reliable UI ack for PLAY_CARD, so do not lock the input/gate here.
+				gameState.inputLocked = false;
+				gameState.animationLockTicks = 0;
+
 				game.ui.TemplateCommandDispatcher.renderAllUnits(out, gameState, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderPlayerStats(out, gameState.domainState);
 				game.ui.TemplateCommandDispatcher.renderHand(out, gameState, gameState.domainState, game.model.GameState.P1);
 
-				// fallback if no ack
 				gameState.aiFallbackCooldownTicks = 1;
 				break;
 
@@ -111,5 +181,4 @@ public class Heartbeat implements EventProcessor {
 				break;
 		}
 	}
-
 }
